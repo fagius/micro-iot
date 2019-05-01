@@ -1,0 +1,134 @@
+#!/bin/sh
+
+NAME=earlysetup
+
+is_on_read_only_partition () {
+	DIRECTORY=$1
+	dir=`readlink -f $DIRECTORY`
+	while true; do
+		if [ ! -d "$dir" ]; then
+			echo "ERROR: $dir is not a directory"
+			exit 1
+		else
+			for flag in `awk -v dir=$dir '{ if ($2 == dir) { print "FOUND"; split($4,FLAGS,",") } }; \
+				END { for (f in FLAGS) print FLAGS[f] }' < /proc/mounts`; do
+				[ "$flag" = "FOUND" ] && partition="read-write"
+				[ "$flag" = "ro" ] && { partition="read-only"; break; }
+			done
+			if [ "$dir" = "/" -o -n "$partition" ]; then
+				break
+			else
+				dir=`dirname $dir`
+			fi
+		fi
+	done
+	[ "$partition" = "read-only" ] && echo "yes" || echo "no"
+}
+
+case "$1" in
+    start)
+        # set gpio 11 low to enable the buffer chip that controls
+        # the signals for uart0/uart1/spi/is2 signals
+        echo 11 > /sys/class/gpio/export > /dev/null 2>&1 
+        echo out > /sys/class/gpio/gpio11/direction > /dev/null 2>&1
+        echo 0 > /sys/class/gpio/gpio11/value > /dev/null 2>&1
+
+        # make sure the i2s pinmux is set to the i2s function
+        mt7688_pinmux set i2s i2s
+
+        if [ -f /usr/bin/amixer ]; then
+          # setup the sound system
+          amixer -c 0 set "Right Output Mixer PCM" on > /dev/null 2>&1
+          amixer -c 0 set "Left Output Mixer PCM" on  > /dev/null 2>&1
+          amixer -c 0 set "DAC Mono Mix" Mono  > /dev/null 2>&1
+          amixer -c 0 set "Speaker" 80%  > /dev/null 2>&1
+          amixer -c 0 set "Headphone" 80%  > /dev/null 2>&1
+        fi
+        	# check for /dev/mmcblk0p1, may take some time to appear
+	COUNT=0
+	while ! [ -r /dev/mmcblk0p1 ]
+	do
+          sleep 1
+          COUNT=$(($COUNT+1))
+          if [ $COUNT -gt 3 ]; then
+            # timed out
+            break
+	  fi
+	done
+
+	if [ -r /dev/mmcblk0p1 ]; then
+	  # external storage exists.
+	  # unmount external storage if already mounted
+	  umount /data > /dev/null 2>&1
+	  # use external storage for /data
+          mount -t ext4 -o sync /dev/mmcblk0p1 /data > /dev/null 2>&1
+	  mount | grep -q mmcblk0p1
+	  if [ $? -ne 0 ]; then
+	    # the external storage did not mount
+	    # use the jffs2 partition /data
+            mount -t jffs2 /dev/mtdblock6 /data > /dev/null 2>&1
+	  fi
+	else
+	  # use the jffs2 partition for /data
+          mount -t jffs2 /dev/mtdblock6 /data > /dev/null 2>&1
+	fi
+
+
+	if [ `is_on_read_only_partition /etc` = "yes" ]; then
+		grep -q "tmpfs /var/volatile" /proc/mounts || mount /var/volatile
+                mkdir -p /data/overlay/upper/etc
+                mkdir -p /data/overlay/work/.etc-work
+		mount -t overlay overlay -o lowerdir=/etc,upperdir=/data/overlay/upper/etc,workdir=/data/overlay/work/.etc-work /etc
+                mkdir -p /data/overlay/upper/usr
+                mkdir -p /data/overlay/work/.usr-work
+		mount -t overlay overlay -o lowerdir=/usr,upperdir=/data/overlay/upper/usr,workdir=/data/overlay/work/.usr-work /usr
+                mkdir -p /data/overlay/upper/lib
+                mkdir -p /data/overlay/work/.lib-work
+		mount -t overlay overlay -o lowerdir=/lib,upperdir=/data/overlay/upper/lib,workdir=/data/overlay/work/.lib-work /lib
+                mkdir -p /data/overlay/upper/var/cache
+                mkdir -p /data/overlay/work/.var-cache-work
+		mount -t overlay overlay -o lowerdir=/var/cache,upperdir=/data/overlay/upper/var/cache,workdir=/data/overlay/work/.var-cache-work /var/cache
+		mkdir -p /var/volatile/lib
+		mkdir -p /var/volatile/.lib-work
+		# Try to mount using overlay, which is much faster than copying
+		# files. If that fails, fallback to the slower copy
+		if ! mount -t overlay overlay -olowerdir=/var/lib,upperdir=/var/volatile/lib,workdir=/var/volatile/.lib-work /var/lib > /dev/null 2>&1; then
+			cp -a /var/lib/* /var/volatile/lib
+			mount --bind /var/volatile/lib /var/lib
+		fi
+	fi
+        ;;
+    stop)
+        # set gpio 11 high to disable the buffer chip that controls
+        # the signals for uart0/uart1/spi/is2 signals
+        echo 11 > /sys/class/gpio/export > /dev/null 2>&1
+        echo out > /sys/class/gpio/gpio11/direction > /dev/null 2>&1
+        echo 1 > /sys/class/gpio/gpio11/value > /dev/null 2>&1
+        
+        if [ -f /usr/bin/amixer ]; then
+          # disable the sound system
+          amixer -c 0 set "Right Output Mixer PCM" off  > /dev/null 2>&1
+          amixer -c 0 set "Left Output Mixer PCM" off  > /dev/null 2>&1
+          amixer -c 0 set "Speaker" 0%  > /dev/null 2>&1
+          amixer -c 0 set "Headphone" 0%  > /dev/null 2>&1
+        fi
+        echo -n "stopping $NAME... "
+        echo "done."
+        ;;
+    restart)
+        echo "restarting $NAME... "
+        $0 stop
+        $0 start
+        echo "done."
+        ;;
+    reload)
+        echo -n "reloading $NAME... "
+        echo "done."
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|reload}"
+        exit 1
+        ;;
+esac
+
+exit 0

@@ -1,0 +1,13 @@
+Index: src/Makefile
+===================================================================
+--- src/Makefile	(revision 45572)
++++ src/Makefile	(working copy)
+@@ -1,7 +1,7 @@
+ ifndef CFLAGS
+ CFLAGS = -O2 -g -I ../src
+ endif
+-LIBS=-lnl -lnl-genl
++LIBS=-lnl-3 -lnl-genl-3
+ 
+ all: swconfig
+ 

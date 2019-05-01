@@ -1,0 +1,43 @@
+#!/bin/sh
+
+SWCONFIG="$( which swconfig )"
+IP="$( which ip )"
+
+swconfig dev switch0 set reset 1
+swconfig dev switch0 set enable_vlan 0
+swconfig dev switch0 set apply 1
+
+exit
+
+
+# force eth0 to be up to initialize switch
+$IP link set eth0 up
+sleep 1
+
+# basic switch settings
+$SWCONFIG dev switch0 set reset_mib 1
+$SWCONFIG dev switch0 set reset 1
+$SWCONFIG dev switch0 set enable_vlan 1
+$SWCONFIG dev switch0 set enable_jumbo 1
+# setup vlans for ports, CPU is on port 8 and wants tagged frames
+# lan ports vlan 1-4
+# the switch chip ports map to the physical ports on the board:
+#     LAN      WAN
+# [ 4 0 1 2 ] [ 3 ]
+$SWCONFIG dev switch0 port 4 set pvid 1
+$SWCONFIG dev switch0 vlan 1 set ports "8t 4"
+$SWCONFIG dev switch0 port 0 set pvid 2
+$SWCONFIG dev switch0 vlan 2 set ports "8t 0"
+$SWCONFIG dev switch0 port 1 set pvid 3
+$SWCONFIG dev switch0 vlan 3 set ports "8t 1"
+$SWCONFIG dev switch0 port 2 set pvid 4
+$SWCONFIG dev switch0 vlan 4 set ports "8t 2"
+# wan port vlan 5
+$SWCONFIG dev switch0 port 3 set pvid 5
+$SWCONFIG dev switch0 vlan 5 set ports "8t 3"
+$SWCONFIG dev switch0 set apply 1
+
+# add vlan interface to eth0
+for v in $(seq 1 5); do
+       $IP link add link eth0 name eth0.${v} type vlan id ${v}
+done

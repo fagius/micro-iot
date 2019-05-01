@@ -1,0 +1,13 @@
+[Unit]
+Description=apply Ethernet switch configuration
+Before=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=Yes
+StandardOutput=syslog
+TimeoutSec=0
+ExecStart=/usr/sbin/swconfig-init
+
+[Install]
+WantedBy=multi-user.target

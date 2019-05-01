@@ -1,0 +1,12 @@
+Index: src/cli.c
+===================================================================
+--- src/cli.c	(revision 45572)
++++ src/cli.c	(working copy)
+@@ -17,6 +17,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <stdlib.h>
++#include <stdbool.h>
+ #include <inttypes.h>
+ #include <errno.h>
+ #include <stdint.h>
