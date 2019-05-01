@@ -3,7 +3,7 @@ SECTION = "Openwrt WLAN drivers."
 LICENSE = "GPL-2.0"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/GPL-2.0;md5=801f80980d171dd6425610833a22dbe6"
 
-SRC_URI = "git://github.com/openwrt/mt76.git;protocol=git;rev=68b0cf17efe32623efd2a46d33b0b551bb78cbbe \
+SRC_URI = "git://github.com/openwrt/mt76.git;protocol=git;rev=0b939dc7edf0629ee2d1475b6dd6b9a4a1f9384d \
 file://Makefile.patch \
 "
 
@@ -15,7 +15,7 @@ PV = "1.0+git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-DEPENDS = "kernel-module-backports"
+DEPENDS = "kernel-module-backports virtual/kernel"
 RDEPENDS_${PN} = "kernel-module-backports"
 
 FILES_${PN}${KERNEL_MODULE_PACKAGE_SUFFIX} += "/lib/firmware/*"

@@ -1,9 +1,20 @@
---- ./Makefile	2018-03-10 23:13:08.548178699 +0100
-+++ ./Makefile	2018-03-02 23:20:08.000000000 +0100
-@@ -15,3 +15,11 @@
- 	mt7603_pci.o mt7603_soc.o mt7603_main.o mt7603_init.o mt7603_mcu.o \
- 	mt7603_core.o mt7603_dma.o mt7603_mac.o mt7603_eeprom.o \
- 	mt7603_beacon.o mt7603_debugfs.o
+diff --git a/Makefile b/Makefile
+index abe2a4f..486d53f 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,7 +1,7 @@
+ EXTRA_CFLAGS += -Werror -DCONFIG_MT76_LEDS
+ 
+ obj-m := mt76.o
+-obj-$(CONFIG_MT7603E) += mt7603/
++obj-m += mt7603/
+ obj-$(CONFIG_MT76x02_LIB) += mt76x02-lib.o
+ obj-$(CONFIG_MT76x02_USB) += mt76x02-usb.o
+ obj-$(CONFIG_MT76_USB) += mt76-usb.o
+@@ -19,3 +19,15 @@ mt76x02-lib-y := mt76x02_util.o mt76x02_mac.o mt76x02_mcu.o \
+ 		 mt76x02_dfs.o
+ 
+ mt76x02-usb-y := mt76x02_usb_mcu.o mt76x02_usb_core.o
 +
 +SRC := $(shell pwd)
 +
@@ -12,3 +23,7 @@
 +
 +modules_install:
 +	$(MAKE) -C $(KERNEL_SRC) M=$(SRC) modules_install
++clean:
++	@rm *.o || true
++
++

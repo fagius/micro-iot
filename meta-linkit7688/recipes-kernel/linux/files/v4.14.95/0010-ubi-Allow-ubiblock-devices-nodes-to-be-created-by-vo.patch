@@ -1,0 +1,37 @@
+diff --git a/drivers/mtd/ubi/Kconfig b/drivers/mtd/ubi/Kconfig
+index 43d131f..56c3e29 100644
+--- a/drivers/mtd/ubi/Kconfig
++++ b/drivers/mtd/ubi/Kconfig
+@@ -103,4 +103,16 @@ config MTD_UBI_BLOCK
+ 
+ 	   If in doubt, say "N".
+ 
++config MTD_UBI_BLOCK_BY_NAME
++        bool "Create ubi block device nodes by name instead of volume ID"
++        default n
++        depends on MTD_UBI_BLOCK
++        help
++           This option enables ubi block devices to be named by their volume name
++	   /dev/ubiblock%d_%s rather than their volume ID /dev/ubiblock%d_%d, so that
++	   one can mount e.g. a root filesystem by UBI name instead of volume ID.
++	   UBI volumes can be renamed on-the-fly in user space. This allows the root
++	   file system to be swapped from an "A" volume to a "B" volume without having to
++	   change the mount options.
++
+ endif # MTD_UBI
+diff --git a/drivers/mtd/ubi/block.c b/drivers/mtd/ubi/block.c
+index f620441..1647fd7 100644
+--- a/drivers/mtd/ubi/block.c
++++ b/drivers/mtd/ubi/block.c
+@@ -400,7 +400,11 @@ int ubiblock_create(struct ubi_volume_info *vi)
+ 		goto out_put_disk;
+ 	}
+ 	gd->private_data = dev;
++#ifdef CONFIG_MTD_UBI_BLOCK_BY_NAME
++	sprintf(gd->disk_name, "ubiblock%d_%s", dev->ubi_num, vi->name);
++#else
+ 	sprintf(gd->disk_name, "ubiblock%d_%d", dev->ubi_num, dev->vol_id);
++#endif
+ 	set_capacity(gd, disk_capacity);
+ 	dev->gd = gd;
+ 
